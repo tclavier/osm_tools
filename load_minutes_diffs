@@ -1,0 +1,35 @@
+#!/bin/bash
+export WORKDIR_OSM=/var/lib/osmosis
+
+START=$(date +%s)
+#expires subdirectory is to save expire tile list
+#changes subdirectory contain minutes_diffs download by osmosis
+if ! [ -d $WORKDIR_OSM/expires/ ]
+then
+	mkdir $WORKDIR_OSM/expires
+fi
+
+LOCK_FILE=$WORKDIR_OSM/$(basename $0).lock
+kill -0 $(cat $LOCK_FILE 2>/dev/null) 2> /dev/null
+if [ $? -eq 1 ]
+then
+  echo $$ > $LOCK_FILE
+else
+	logger -p 'daemon.info' -t $(basename $0) "Load minutes diffs in progress"
+	exit 0
+fi
+
+
+if [ $(find $WORKDIR_OSM/changes/ -name '*.osc' -print | wc -l) -gt 0 ]
+then 
+	OSC_FILE=$(find $WORKDIR_OSM/changes/ -name '*.osc' | head -n 1)
+	time osm2pgsql --append -S /home/osm/mapnik/Beciklo/style/Becyklo.style -G -s -v -m -d osm -C 10240 $OSC_FILE -e15 -o /tmp/$START.list
+fi
+if [ $? -eq 0 ]
+then
+	rm $OSC_FILE
+	mv /tmp/$START.list $WORKDIR_OSM/expires/
+else
+	rm /tmp/$START.list
+fi
+

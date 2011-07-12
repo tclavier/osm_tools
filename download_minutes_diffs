@@ -1,21 +1,25 @@
 #!/bin/bash
-cd
-export WORKDIR_OSM=$HOME/.osmosis
-while true 
-do 
-	START=$(date +%s)
-	if ! [ -d $WORKDIR_OSM/changes ]
-	then
-		mkdir $WORKDIR_OSM/changes
-	fi
-	
-	if [ $(find $WORKDIR_OSM/changes -name '*.osc' | wc -l) -lt 9 ]
-	then
-		osmosis --read-replication-interval workingDirectory=$WORKDIR_OSM --simplify-change --write-xml-change $WORKDIR_OSM/changes/$START.osc
-	fi
 
-	DELAY=$(( $(date +%s) - $START ))
-	echo "$DELAY" > /tmp/download_diff
-	# On ne télécharge les diffs que toutes les 5min
-	sleep 300
-done
+export WORKDIR_OSM=/var/lib/osmosis
+export PATH=$PATH:/usr/bin/
+
+LOCK_FILE=$WORKDIR_OSM/$(basename $0).lock
+kill -0 $(cat $LOCK_FILE 2>/dev/null) 2> /dev/null
+if [ $? -eq 1 ]
+then
+  echo $$ > $LOCK_FILE
+else 
+	logger -p 'daemon.info' -t $(basename $0) "Download in progress"
+  exit 0
+fi
+
+START=$(date +%s)
+if ! [ -d $WORKDIR_OSM/changes ]
+then
+	mkdir $WORKDIR_OSM/changes
+fi
+
+if [ $(find $WORKDIR_OSM/changes -name '*.osc' | wc -l) -lt 3 ]
+then
+	osmosis --read-replication-interval workingDirectory=$WORKDIR_OSM --simplify-change --write-xml-change $WORKDIR_OSM/changes/$START.osc
+fi

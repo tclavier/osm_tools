@@ -1,0 +1,23 @@
+#!/bin/bash
+export WORKDIR_OSM=/var/lib/osmosis
+
+LOCK_FILE=$WORKDIR_OSM/$(basename $0).lock
+kill -0 $(cat $LOCK_FILE 2>/dev/null) 2> /dev/null
+if [ $? -eq 1 ]
+then
+	echo $$ > $LOCK_FILE
+else
+	logger -p 'daemon.info' -t $(basename $0) "Render in progress"
+	exit 0
+fi
+
+
+for EXPIR_FILE in $(find $WORKDIR_OSM/expires -name '*.list' -print)
+do
+	cat $EXPIR_FILE | render_expired --map=tango --min-zoom=10 --touch-from=10 --num-threads=2
+	cat $EXPIR_FILE | render_expired --map=beciklo --min-zoom=10 --touch-from=10 --num-threads=2
+	cat $EXPIR_FILE | render_expired --map=beciklo_pistes --min-zoom=10 --touch-from=10 --num-threads=2
+	cat $EXPIR_FILE | render_expired --map=beciklo_infos --min-zoom=10 --touch-from=10 --num-threads=2
+	rm $EXPIR_FILE
+done
+
