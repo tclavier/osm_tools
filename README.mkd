@@ -1,0 +1,2 @@
+# OpenStreetMap.org script collection 
+Collection script for people they whant to build a mapnik server with minutes_diff
